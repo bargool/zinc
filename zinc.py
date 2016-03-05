@@ -49,7 +49,7 @@ class Settings(object):
         if not os.path.exists(self._settings_directory):
             os.makedirs(self._settings_directory)
         self._config.add_section('Dropbox')
-        self._config.set('Dropbox', 'url', self.DEFAULTS.DOWNLOAD_URL)
+        self._config.set('Dropbox', 'default', self.DEFAULTS.DOWNLOAD_URL)
         self._config.add_section('Folders')
         self._config.set('Folders', 'download_folder', self.DEFAULTS.DOWNLOAD_FOLDER)
         settings_filepath = os.path.join(self._settings_directory, self._settings_filename)
