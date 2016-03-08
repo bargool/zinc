@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 # -*- coding: utf-8 -*-
 import os
 import urllib2
@@ -69,9 +69,10 @@ class Settings(object):
 
 
 class DropboxParser(HTMLParser):
+    """Parser. Stores parsed result in data property as list of tuples (filename, link)"""
     def __init__(self):
         HTMLParser.__init__(self)
-        self.data = []
+        self._data = []
 
     def handle_starttag(self, tag, attrs):
         if tag != 'a':
@@ -84,7 +85,17 @@ class DropboxParser(HTMLParser):
             elif name == 'href':
                 href = value
         if is_found_link and href:
-            self.data.append(href)
+            self.process_filelink(href)
+
+    def process_filelink(self, href):
+        escaped_fname = href.split('/')[-1].rsplit('?', 1)[0]
+        url = href.rstrip('0') + '1'
+        self._data.append((urllib2.unquote(escaped_fname), url))
+
+    @property
+    def data(self):
+        """List of tuples. (filename, link)"""
+        return self._data
 
 
 def chunk_report_dialog(bytes_so_far, total_size, dialog):
@@ -131,11 +142,6 @@ def download_file(url, directory_to, filename, dialog):
     dialog.gauge_stop()
 
 
-def get_filename_from_url(url):
-    unesqaped_fname = url.split('/')[-1].rsplit('?', 1)[0]
-    return urllib2.unquote(unesqaped_fname)
-
-
 def is_file_exists(filename):
     """Check if file exists in download directory"""
     download_directory = Settings().download_path
@@ -145,7 +151,7 @@ def is_file_exists(filename):
 
 def choose_files(file_urls, dialog):
     """Choose files to download via dialog"""
-    items = [(url, get_filename_from_url(url), False) for url in file_urls]
+    items = [(url, filename, False) for filename, url in file_urls]
     result = dialog.buildlist("Choose files to download",
                               items=items,
                               visit_items=True, help_status=False)
@@ -178,14 +184,14 @@ def process_filelist(dialog, url_list):
     :param dialog: dialog object
     :param url_list: list of urls to process
     """
-    file_urls = [url for url in url_list if not is_file_exists(get_filename_from_url(url))]
+    file_urls = [(filename, url) for filename, url in url_list if not is_file_exists(filename)]
     if file_urls:
         download_urls = choose_files(file_urls, dialog)
         if download_urls:
             for url in download_urls:
                 directory = settings.download_path
-                url = url.rstrip('0') + '1'
-                download_file(url, directory, get_filename_from_url(url), dialog)
+                fname = next(f for f, u in file_urls if u == url)
+                download_file(url, directory, fname, dialog)
             # This recursion is just for convenience of user dialogs
             if dialog.yesno("All files downloaded. Want to choose more?") == dialog.DIALOG_OK:
                 process_filelist(dialog, url_list)
