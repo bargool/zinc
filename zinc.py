@@ -5,6 +5,7 @@ import urllib2
 import shutil
 import subprocess
 import tempfile
+import functools
 from HTMLParser import HTMLParser
 from ConfigParser import SafeConfigParser
 from dialog import Dialog
@@ -98,6 +99,23 @@ class DropboxParser(HTMLParser):
         return self._data
 
 
+def add_temporary_args(tempargs):
+    """This decorator adds temporary persistent_arglist to dialog, then returns previous"""
+    def add_args(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            dialog = next(arg for arg in args if isinstance(arg, Dialog))
+            if not dialog:
+                raise AttributeError('Function must have Dialog as on of arguments')
+            current_arglist = dialog.dialog_persistent_arglist[:]
+            dialog.add_persistent_args(tempargs)
+            result = func(*args, **kwargs)
+            dialog.dialog_persistent_arglist = current_arglist
+            return result
+        return wrapper
+    return add_args
+
+
 def chunk_report_dialog(bytes_so_far, total_size, dialog):
     """Just update progress bar"""
     percent = float(bytes_so_far) / total_size
@@ -105,14 +123,14 @@ def chunk_report_dialog(bytes_so_far, total_size, dialog):
     dialog.gauge_update(percent)
 
 
-def chunk_read_write(process, total_size, f_obj, chunk_size=8192, report_hook=None, dialog=None):
+def chunk_read_write(process, total_size, f_obj, dialog, chunk_size=8192, report_hook=None):
     """Read process stdout by chunks and write that chunks to file-like object
     :param process: process which stdout to read
     :param total_size: expected total size just for progress reporting
     :param f_obj: file-like object to write
+    :param dialog: dialog to report about progress
     :param chunk_size: size of chunks to read-write
     :param report_hook: method for report about progress
-    :param dialog: dialog to report about progress
     """
     bytes_so_far = 0
     while True:
@@ -136,7 +154,7 @@ def download_file(url, directory_to, filename, dialog):
                                shell=True)
     dialog.gauge_start("Downloading {} of {}".format(sizeof_fmt(filesize), filename))
     with tempfile.NamedTemporaryFile() as f:
-        chunk_read_write(process, filesize, f, report_hook=chunk_report_dialog, dialog=dialog)
+        chunk_read_write(process, filesize, f, dialog=dialog, report_hook=chunk_report_dialog)
         f.seek(0)
         shutil.copy(f.name, path)
     dialog.gauge_stop()
@@ -199,6 +217,7 @@ def process_filelist(dialog, url_list):
         dialog.msgbox("Nothing to download")
 
 
+@add_temporary_args(["--cancel-label", "Exit"])
 def choose_repo(repos, dialog):
     """Choose repo from repos list via dialog"""
     dialog_result = dialog.menu("Choose repo", choices=repos)
