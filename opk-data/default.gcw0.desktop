@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=ZiNC
+Type=Application
+Exec=zinc.py
+Icon=zinc-icon
+Comment=ZiNC is Not a Cloud...
+Terminal=true
+Categories=applications;
+X-OD-Manual=readme.txt
