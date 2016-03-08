@@ -21,3 +21,7 @@ Y: Select a file
 START: Enter
 
 SELECT: Escape
+
+## Links
+
+Source code: https://github.com/bargool/zinc
