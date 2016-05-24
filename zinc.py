@@ -10,7 +10,7 @@ from ConfigParser import SafeConfigParser
 from dialog import Dialog
 
 __author__ = "Nakoryakov Aleksey, Sysoev Roman"
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 __maintainer__ = "Nakoryakov Aleksey"
 __license__ = "GPL 3.0"
 
@@ -90,7 +90,7 @@ class DropboxParser(HTMLParser):
     def process_filelink(self, href):
         escaped_fname = href.split('/')[-1].rsplit('?', 1)[0]
         url = href.rstrip('0') + '1'
-        self._data.append((urllib2.unquote(escaped_fname), url))
+        self._data.append((urllib2.unquote(escaped_fname).decode('utf-8'), url))
 
     @property
     def data(self):
@@ -126,7 +126,7 @@ def download_file(url, directory_to, filename, dialog):
                                stdout=subprocess.PIPE,
                                bufsize=0,
                                shell=True)
-    dialog.gauge_start("Downloading {} of {}".format(sizeof_fmt(filesize), filename))
+    dialog.gauge_start(u"Downloading {} of {}".format(sizeof_fmt(filesize), filename))
     with tempfile.NamedTemporaryFile() as f:
         chunk_read_write(process, filesize, f, dialog=dialog)
         f.seek(0)

@@ -1,8 +1,6 @@
 ZiNC is Not a Cloud!
 This program is for download files from Dropbox shared (available to all) folders to GCW0 Handheld Console
 
-The software uses python2-dialog to show UI and wget to download files
-
 ## Settings
 
 Settings file will appear at `/media/home/.cinc/` after first start.
