@@ -113,7 +113,7 @@ def chunk_read_write(process, total_size, f_obj, dialog, chunk_size=8192):
             break
         bytes_so_far += len(chunk)
         f_obj.write(chunk)
-        percent = int(float(bytes_so_far) / total_size)
+        percent = int(bytes_so_far * 100.0 / total_size)
         dialog.gauge_update(percent)
     process.wait()
 
