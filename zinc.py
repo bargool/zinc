@@ -1,13 +1,14 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 import os
-import urllib2
 import shutil
 import subprocess
 import tempfile
-from HTMLParser import HTMLParser
 from ConfigParser import SafeConfigParser
 from dialog import Dialog
+
+from parsers import DropboxParser
 
 __author__ = "Nakoryakov Aleksey, Sysoev Roman"
 __version__ = "0.3.3"
@@ -68,36 +69,6 @@ class Settings(object):
         return self._config.items('Dropbox')
 
 
-class DropboxParser(HTMLParser):
-    """Parser. Stores parsed result in data property as list of tuples (filename, link)"""
-    def __init__(self):
-        HTMLParser.__init__(self)
-        self._data = []
-
-    def handle_starttag(self, tag, attrs):
-        if tag != 'a':
-            return
-        is_found_link = False
-        href = ''
-        for name, value in attrs:
-            if name == 'class' and value == 'file-link':
-                is_found_link = True
-            elif name == 'href':
-                href = value
-        if is_found_link and href:
-            self.process_filelink(href)
-
-    def process_filelink(self, href):
-        escaped_fname = href.split('/')[-1].rsplit('?', 1)[0]
-        url = href.rstrip('0') + '1'
-        self._data.append((urllib2.unquote(escaped_fname).decode('utf-8'), url))
-
-    @property
-    def data(self):
-        """List of tuples. (filename, link)"""
-        return self._data
-
-
 def chunk_read_write(process, total_size, f_obj, dialog, chunk_size=8192):
     """Read process stdout by chunks and write that chunks to file-like object
     :param process: process which stdout to read
@@ -126,7 +97,7 @@ def download_file(url, directory_to, filename, dialog):
                                stdout=subprocess.PIPE,
                                bufsize=0,
                                shell=True)
-    dialog.gauge_start(u"Downloading {} of {}".format(sizeof_fmt(filesize), filename))
+    dialog.gauge_start("Downloading {} of {}".format(sizeof_fmt(filesize), filename))
     with tempfile.NamedTemporaryFile() as f:
         chunk_read_write(process, filesize, f, dialog=dialog)
         f.seek(0)
