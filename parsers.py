@@ -36,7 +36,7 @@ class DropboxParser(BaseParser):
         is_found_link = False
         href = ''
         for name, value in attrs:
-            if name == 'class' and value == 'file-link':
+            if name == 'class' and 'filename-link' in value:
                 is_found_link = True
             elif name == 'href':
                 href = value

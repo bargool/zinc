@@ -11,7 +11,7 @@ from dialog import Dialog
 from parsers import DropboxParser
 
 __author__ = "Nakoryakov Aleksey, Sysoev Roman"
-__version__ = "0.3.3"
+__version__ = "0.3.4"
 __maintainer__ = "Nakoryakov Aleksey"
 __license__ = "GPL 3.0"
 
