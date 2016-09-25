@@ -1,17 +1,20 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+
+import logging
 import os
 import shutil
 import subprocess
 import tempfile
-from ConfigParser import SafeConfigParser
+from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
+
 from dialog import Dialog
 
 from parsers import DropboxParser
 
 __author__ = "Nakoryakov Aleksey, Sysoev Roman"
-__version__ = "0.3.4"
+__version__ = "0.3.5"
 __maintainer__ = "Nakoryakov Aleksey"
 __license__ = "GPL 3.0"
 
@@ -35,27 +38,33 @@ class Settings(object):
         DOWNLOAD_URL = 'https://www.dropbox.com/sh/3aycxk7war34ijo/AADeK2sC0IwbNEUtPnXXaOura?dl=0'
 
     def __init__(self):
-        self._settings_directory = os.path.expanduser('~/.zinc/')
+        self._app_home_directory = os.path.expanduser('~/.zinc/')
         self._settings_filename = 'settings.cfg'
         self._read_config()
 
     def _read_config(self):
         self._config = SafeConfigParser()
-        settings_filepath = os.path.join(self._settings_directory, self._settings_filename)
+        settings_filepath = os.path.join(self.app_home_directory, self._settings_filename)
         if not os.path.exists(settings_filepath):
             self._write_settings()
         self._config.read(settings_filepath)
 
     def _write_settings(self):
-        if not os.path.exists(self._settings_directory):
-            os.makedirs(self._settings_directory)
+        if not os.path.exists(self.app_home_directory):
+            os.makedirs(self.app_home_directory)
+        self._config.add_section('General')
+        self._config.set('General', 'logging_debug', 'no')
         self._config.add_section('Dropbox')
         self._config.set('Dropbox', 'default', self.DEFAULTS.DOWNLOAD_URL)
         self._config.add_section('Folders')
         self._config.set('Folders', 'download_folder', self.DEFAULTS.DOWNLOAD_FOLDER)
-        settings_filepath = os.path.join(self._settings_directory, self._settings_filename)
+        settings_filepath = os.path.join(self.app_home_directory, self._settings_filename)
         with open(settings_filepath, 'wb') as configfile:
             self._config.write(configfile)
+
+    @property
+    def app_home_directory(self):
+        return self._app_home_directory
 
     @property
     def download_path(self):
@@ -67,6 +76,13 @@ class Settings(object):
     @property
     def repos(self):
         return self._config.items('Dropbox')
+
+    @property
+    def do_logging(self):
+        try:
+            return self._config.getboolean('General', 'logging_debug')
+        except (NoSectionError, NoOptionError):
+            return False
 
 
 def chunk_read_write(process, total_size, f_obj, dialog, chunk_size=8192):
@@ -184,6 +200,7 @@ def process_repos(dialog, repos):
         dialog.msgbox("OK! Bye!")
         return
     dialog.infobox("Requesting filelist...")
+    logging.debug("Downloading filelist from %s", filelist_url)
     process = subprocess.Popen('wget --no-check-certificate -qO- ' + filelist_url,
                                stdout=subprocess.PIPE,
                                shell=True)
@@ -191,10 +208,10 @@ def process_repos(dialog, repos):
     if not content:
         dialog.msgbox("No filelist! Check internet connection!")
         return
-    parser = DropboxParser()
-    parser.feed(content)
-    process_filelist(dialog, parser.data)
-    parser.close()
+    with DropboxParser() as parser:
+        parser.feed(content)
+        logging.debug("Found %d file links", len(parser.data))
+        process_filelist(dialog, parser.data)
     if len(repos) != 1 and dialog.yesno("Choose another repo?", no_label="Exit") == dialog.DIALOG_OK:
         process_repos(dialog, repos)
 
@@ -208,4 +225,10 @@ def main():
 
 if __name__ == '__main__':
     settings = Settings()
+    log_level = logging.DEBUG if settings.do_logging else logging.CRITICAL
+    log_filepath = os.path.join(settings.app_home_directory, 'zinc.log')
+    logging.basicConfig(filename=os.path.expanduser(log_filepath),
+                        filemode='w+',
+                        level=log_level,
+                        format='%(asctime)s : %(levelname)-8s : %(message)s')
     main()

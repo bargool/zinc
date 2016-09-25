@@ -1,11 +1,12 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+
 import abc
-import subprocess
+import logging
 import urllib2
-from collections import namedtuple
 from HTMLParser import HTMLParser
+from collections import namedtuple
 
 __author__ = "Nakoryakov Aleksey, Sysoev Roman"
 __maintainer__ = "Nakoryakov Aleksey"
@@ -23,6 +24,12 @@ class BaseParser(HTMLParser, object):
         super(BaseParser, self).__init__()
         self._data = []
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     @property
     def data(self):
         """List of fileinfos. (filename, link)"""
@@ -36,11 +43,12 @@ class DropboxParser(BaseParser):
         is_found_link = False
         href = ''
         for name, value in attrs:
-            if name == 'class' and 'filename-link' in value:
+            if name == 'class' and 'file-link' in value:
                 is_found_link = True
             elif name == 'href':
                 href = value
         if is_found_link and href:
+            logging.debug("Found link: %s", href)
             self._process_filelink(href)
 
     def _process_filelink(self, href):
